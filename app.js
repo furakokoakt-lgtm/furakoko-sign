@@ -12,7 +12,8 @@ const KEY_CODE = 'furakoko_staff_code';
 const CIRCLED = ['①', '②', '③', '④', '⑤', '⑥'];
 const SIGNER_LABEL = { user: '利用者 署名', guardian: '保護者 署名', staff: '説明者（職員） 署名' };
 
-const FIELDS = C.mode === 'child' ? [
+// 入力欄は docs-*.js の fields で決めることもできる（個別支援計画の同意など）。無ければ下の標準を使う。
+const FIELDS = C.fields || (C.mode === 'child' ? [
   { id: 'childName', label: '利用児童の氏名', ph: '例：田中　さくら', req: true },
   { id: 'childFurigana', label: '利用児童のフリガナ', ph: '例：タナカ　サクラ', req: true, hint: '※ファイル名に使います（全角カタカナ）' },
   { id: 'guardianName', label: '保護者の氏名', ph: '例：田中　花子', req: true },
@@ -26,7 +27,8 @@ const FIELDS = C.mode === 'child' ? [
   { id: 'userAddress', label: '住所', ph: '例：秋田市○○○', req: true },
   { id: 'contractDate', label: '契約日', type: 'date', req: true },
   { id: 'staffName', label: '説明した職員の氏名', ph: '例：成田　ひとみ', req: true, keep: true },
-];
+]);
+const DATE_LABEL = C.dateLabel || '契約日';
 const GUARDIAN_FIELDS = [
   { id: 'gName', label: '保護者氏名', ph: '例：田中　一郎' },
   { id: 'gAddress', label: '保護者住所', ph: '例：秋田市○○○' },
@@ -147,9 +149,10 @@ function renderDocSteps() {
 }
 // 書類の文章を読み込む。通信できればGoogle側から最新を取り、端末にも保存する。通信できなければ端末の保存分を使う。
 const KEY_DOCS = 'furakoko_docs_' + C.office;
+// docs-*.js に文章（blocks）を書いた書類は、それをそのまま使う（個人情報を含まない短い同意書だけ）。
 function applyDocs(docs) {
-  if (!docs || !C.docs.every(d => Array.isArray(docs[d.key]))) return false;
-  C.docs.forEach(d => { d.blocks = docs[d.key]; });
+  if (!docs || !C.docs.every(d => d.local || Array.isArray(docs[d.key]))) return false;
+  C.docs.forEach(d => { if (!d.local) d.blocks = docs[d.key]; });
   renderDocSteps();
   return true;
 }
@@ -351,7 +354,7 @@ async function generatePDF(data) {
 
   addPdfHeader(doc, C.name);
   let y = 45;
-  addJaText(doc, '同 意 書 類 一 式', margin, y, 10, { bold: true, color: '#333333' }); y += 22;
+  addJaText(doc, C.coverTitle || '同 意 書 類 一 式', margin, y, 10, { bold: true, color: '#333333' }); y += 22;
   data.coverLines.forEach(l => { addJaText(doc, l, margin, y, 5, gray); y += 10; });
   y += 8;
   addJaText(doc, '本書類は、上記の方が端末の画面で全文を確認し、電子的に署名したものです。', margin, y, 4, { color: '#777777' }); y += 8;
@@ -361,7 +364,7 @@ async function generatePDF(data) {
     doc.addPage(); addPdfHeader(doc, d.title);
     let y = 20;
     addJaText(doc, data.headLine, margin, y, 4.2, gray);
-    addJaText(doc, '契約日：' + jpDate(data.date), pageW - margin - 42, y, 4, gray);
+    addJaText(doc, DATE_LABEL + '：' + jpDate(data.date), pageW - margin - 42, y, 4, gray);
     y += 9;
     y = addJaBlocks(doc, d.blocks, d.title, y);
     y += 6;
@@ -395,6 +398,15 @@ function collectData() {
   const date = val('contractDate');
   const sig = {};
   C.docs.forEach(d => activeSigners(d).forEach(s => { sig[d.key + '_' + s] = getCanvasImage(canvasId(d, s)); }));
+  if (C.fields) {
+    const g = val('guardianName') + (val('guardianRelation') ? '（続柄：' + val('guardianRelation') + '）' : '');
+    return {
+      name: val('childName'), furigana: val('childFurigana'), date,
+      headLine: '利用児童：' + val('childName') + '（' + val('childFurigana') + '）',
+      coverLines: C.fields.map(f => f.label + '：' + (f.type === 'date' ? jpDate(val(f.id)) : val(f.id))),
+      guardianLabel: g, staffName: val('staffName'), signatures: sig
+    };
+  }
   if (C.mode === 'child') {
     const g = val('guardianName') + '（続柄：' + val('guardianRelation') + '）';
     return {
@@ -425,7 +437,7 @@ async function submitAll() {
   try {
     const d = collectData();
     const pdfBase64 = await generatePDF(d);
-    const fileName = safeName(d.furigana) + '_' + safeName(d.name) + '_' + d.date.replace(/-/g, '') + '.pdf';
+    const fileName = (C.filePrefix || '') + safeName(d.furigana) + '_' + safeName(d.name) + '_' + d.date.replace(/-/g, '') + '.pdf';
     const bin = atob(pdfBase64);
     const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     lastPdfBlob = new Blob([bytes], { type: 'application/pdf' }); lastFileName = fileName;
