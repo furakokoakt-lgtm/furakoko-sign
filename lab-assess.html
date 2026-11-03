@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#eba39a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="アセスメント">
+<title>心を育てるふらここラボ　アセスメントシート</title>
+<link rel="manifest" href="manifest-lab-assess.webmanifest">
+<link rel="apple-touch-icon" href="icon-lab-180.png">
+<link rel="icon" href="icon-lab-192.png">
+<link rel="stylesheet" href="app.css">
+<style>
+.info-grid { display: grid; grid-template-columns: 1fr; gap: 0 16px; }
+@media (min-width: 640px) { .info-grid { grid-template-columns: 1fr 1fr; } .info-grid .wide { grid-column: 1 / -1; } }
+.age { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.age input { flex: 1 1 0; min-width: 0; }
+.kinds { display: flex; flex-wrap: wrap; gap: 8px; }
+.kind { flex: 1 1 200px; display: flex; align-items: center; gap: 10px; padding: 14px; background: #fff; border: 2px solid #ddd; border-radius: 12px; font-size: 15px; }
+.kind input { width: 20px; height: 20px; accent-color: #c5634d; flex: none; }
+.kind:has(input:checked) { border-color: #c5634d; background: #fdf3f2; }
+.area-title { font-size: 17px; font-weight: bold; color: #c5634d; margin: 22px 0 10px; padding-bottom: 6px; border-bottom: 2px solid #eba39a; }
+.sub-title { font-size: 14px; font-weight: bold; color: #8a5548; margin: 12px 0 6px; }
+.item { background: #fff; border: 1px solid #e0d8d7; border-radius: 12px; padding: 12px; margin-bottom: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.item-text { flex: 1 1 260px; min-width: 0; }
+.item-q { font-size: 15px; line-height: 1.5; }
+.item-c { font-size: 12px; color: #888; line-height: 1.5; margin-top: 2px; }
+.item-ctrl { display: flex; align-items: center; gap: 8px; flex: none; }
+.marks { display: flex; gap: 6px; }
+.mark { width: 48px; height: 48px; border-radius: 50%; border: 2px solid #ddd; background: #fff; font-size: 20px; color: #666; font-family: inherit; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.mark.on { background: #c5634d; border-color: #c5634d; color: #fff; font-weight: bold; }
+.memo-btn { height: 48px; padding: 0 12px; border-radius: 10px; border: 1px solid #ddd; background: #f5f0ef; color: #666; font-size: 13px; font-family: inherit; touch-action: manipulation; }
+.memo-btn.has { background: #fdf3f2; border-color: #eba39a; color: #c5634d; font-weight: bold; }
+.memo { flex: 1 1 100%; padding: 10px 12px; font-size: 16px; line-height: 1.5; resize: vertical; }
+input[type="date"].form-input { min-height: 52px; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="assess.js"></script>
+</head>
+<body>
+<noscript>このページを使うには、JavaScriptを有効にしてください。</noscript>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "心を育てるふらここラボ　アセスメントシート",
+  "short_name": "アセスメント",
+  "start_url": "./lab-assess.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f0ef",
+  "theme_color": "#eba39a",
+  "icons": [
+    { "src": "icon-lab-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-lab-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
