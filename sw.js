@@ -1,6 +1,6 @@
 // 画面のファイルを端末に保存し、電波が弱いときでもアプリを開けるようにする。
 // ファイルを更新したら VERSION を上げる。
-const VERSION = 'v4';
+const VERSION = 'v5';
 const FILES = ['./', 'index.html', 'soudan.html', 'lab.html', 'lab-plan.html', 'lab-assess.html', 'app.css', 'app.js', 'assess.js', 'docs-soudan.js', 'docs-lab.js', 'docs-lab-plan.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'];
 self.addEventListener('install', e => {

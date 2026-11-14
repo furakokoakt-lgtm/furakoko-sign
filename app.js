@@ -66,8 +66,22 @@ function fieldHtml(f) {
     (f.ph ? ' placeholder="' + esc(f.ph) + '"' : '') + '>' +
     (f.hint ? '<div class="form-hint">' + esc(f.hint) + '</div>' : '') + '</div>';
 }
+// ["c", 項目名, キー, 表紙用の短い名前] は「同意する／同意しない」を選ぶ欄（2026-11 写真・動画の掲載の同意のために追加）。
+// 文章の中には項目名だけを出し、選ぶ欄は文章の下（署名欄の上）に出す。
+const CHOICE_OPTIONS = ['同意する', '同意しない'];
+function choicesOf(doc) { return (doc.blocks || []).filter(b => b[0] === 'c'); }
+function choiceName(doc, b) { return 'choice_' + doc.key + '_' + b[2]; }
+function choiceValue(doc, b) { const r = document.querySelector('input[name="' + choiceName(doc, b) + '"]:checked'); return r ? r.value : ''; }
+function choiceHtml(doc, b) {
+  return '<div class="choice-box" style="background:#fff;border:2px solid #eba39a;border-radius:12px;padding:14px 16px;margin-bottom:16px">' +
+    '<div style="font-size:15px;font-weight:bold;color:#8a5548;line-height:1.6;margin-bottom:10px">' + esc(b[1]) + '<span style="color:#e05555;margin-left:6px;font-size:12px">必須</span></div>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
+    CHOICE_OPTIONS.map(o => '<label class="toggle" style="margin:0;flex:1;min-width:130px;padding:12px"><input type="radio" name="' + choiceName(doc, b) + '" value="' + o + '">' + o + '</label>').join('') +
+    '</div></div>';
+}
 function blocksHtml(blocks) {
-  return blocks.map(b => b[0] === 'h' ? '<h2>' + esc(b[1]) + '</h2>' : b[0] === 's' ? '<h3>' + esc(b[1]) + '</h3>' : '<p>' + esc(b[1]) + '</p>').join('');
+  return blocks.map(b => b[0] === 'h' ? '<h2>' + esc(b[1]) + '</h2>' : b[0] === 's' ? '<h3>' + esc(b[1]) + '</h3>' :
+    b[0] === 'c' ? '<p><b>' + esc(b[1]) + '</b>　→ 下の欄で「同意する」か「同意しない」を選んでください。</p>' : '<p>' + esc(b[1]) + '</p>').join('');
 }
 function signatureHtml(doc, signer, optional) {
   const id = canvasId(doc, signer);
@@ -135,6 +149,7 @@ function renderDocSteps() {
     h += '<div class="section-title">' + CIRCLED[n] + ' ' + esc(doc.title) + 'の確認・署名</div>';
     h += '<div class="scroll-hint">↕ スクロールして全文をご確認ください</div>';
     h += '<div class="document-box">' + blocksHtml(doc.blocks || []) + '</div>';
+    choicesOf(doc).forEach(b => { h += choiceHtml(doc, b); });
     h += '<div class="read-confirm">' + esc(doc.note) + '<br>よろしければ、下に署名をお願いします。</div>';
     doc.signers.forEach(s => { h += signatureHtml(doc, s.replace('?', ''), s.endsWith('?')); });
     h += '<button type="button" class="btn-primary" data-next="' + n + '">' + (last ? '署名を完了して保存する' : '次へ　→　' + esc(C.docs[i + 1].title) + 'の確認') + '</button>';
@@ -207,6 +222,9 @@ function nextFromInfo() {
 }
 function nextFromDoc(n) {
   const doc = C.docs[n - 1];
+  for (const b of choicesOf(doc)) {
+    if (!choiceValue(doc, b)) { alert('「' + b[1] + '」について、「同意する」か「同意しない」を選んでください。'); return; }
+  }
   for (const s of activeSigners(doc)) {
     if (isCanvasEmpty(canvasId(doc, s))) { alert(doc.title + 'の「' + SIGNER_LABEL[s] + '」が必要です。'); return; }
   }
@@ -324,16 +342,26 @@ function addPdfHeader(doc, title) {
   doc.setFillColor(235, 163, 154); doc.rect(0, 0, 210, 12, 'F');
   addJaText(doc, title, 15, 3.5, 5, { bold: true, color: '#ffffff', bg: '#eba39a' });
 }
-function addJaBlocks(doc, blocks, title, startY) {
+function addJaBlocks(doc, blocks, title, startY, docKey, choices) {
   const margin = 15, contentW = 180, bottom = 268, contentTop = 20, PPM = 8;
   const widthPx = Math.round(contentW * PPM);
   const styles = {
     h: { size: 5, bold: true, lh: 8.5, before: 0, after: 4 },
     s: { size: 4, bold: true, lh: 6.2, before: 3, after: 1.5 },
-    p: { size: 3.5, bold: false, lh: 5.4, before: 0, after: 2.2 }
+    p: { size: 3.5, bold: false, lh: 5.4, before: 0, after: 2.2 },
+    cp: { size: 3.5, bold: true, lh: 5.4, before: 1, after: 1 },
+    co: { size: 4.2, bold: true, lh: 6.5, before: 0, after: 2.5 }
   };
+  // 選ぶ欄は「項目名」と「■同意する　□同意しない」の2行にする
+  const list = [];
+  blocks.forEach(b => {
+    if (b[0] !== 'c') { list.push(b); return; }
+    const v = (choices || {})[docKey + '_' + b[2]] || '';
+    list.push(['cp', b[1]]);
+    list.push(['co', CHOICE_OPTIONS.map(o => (o === v ? '■ ' : '□ ') + o).join('　　　')]);
+  });
   let y = startY;
-  for (const b of blocks) {
+  for (const b of list) {
     const st = styles[b[0]] || styles.p;
     const lines = wrapJaText(b[1], Math.round(st.size * PPM), widthPx, st.bold);
     y += st.before;
@@ -366,7 +394,7 @@ async function generatePDF(data) {
     addJaText(doc, data.headLine, margin, y, 4.2, gray);
     addJaText(doc, DATE_LABEL + '：' + jpDate(data.date), pageW - margin - 42, y, 4, gray);
     y += 9;
-    y = addJaBlocks(doc, d.blocks, d.title, y);
+    y = addJaBlocks(doc, d.blocks, d.title, y, d.key, data.choices);
     y += 6;
     if (y + 20 > 268) { doc.addPage(); addPdfHeader(doc, d.title); y = 20; }
     addJaText(doc, d.note, margin, y, 4.2, { color: '#8a5548' }); y += 9;
@@ -431,11 +459,21 @@ function collectData() {
   };
 }
 function safeName(s) { return String(s).replace(/[\\/:*?"<>|\s]+/g, ''); }
+// 選ぶ欄の答えを集め、表紙にも1行ずつ書く（PDFを開いてすぐ分かるように）
+function addChoices(data) {
+  data.choices = {};
+  C.docs.forEach(doc => choicesOf(doc).forEach(b => {
+    const v = choiceValue(doc, b);
+    data.choices[doc.key + '_' + b[2]] = v;
+    data.coverLines.push((b[3] || b[1]) + '：' + v);
+  }));
+  return data;
+}
 
 async function submitAll() {
   showLoading('PDFを作成しています...');
   try {
-    const d = collectData();
+    const d = addChoices(collectData());
     const pdfBase64 = await generatePDF(d);
     const fileName = (C.filePrefix || '') + safeName(d.furigana) + '_' + safeName(d.name) + '_' + d.date.replace(/-/g, '') + '.pdf';
     const bin = atob(pdfBase64);
@@ -555,6 +593,7 @@ function startNew() {
   $('contractDate').value = todayStr();
   if (C.mode !== 'child') { $('hasGuardian').checked = false; setGuardian(false); }
   allCanvasIds().forEach(clearCanvas);
+  document.querySelectorAll('.choice-box input[type=radio]').forEach(r => { r.checked = false; });
   lastPdfBlob = null; lastFileName = '';
   goToStep(0);
   checkPendingUploads();
